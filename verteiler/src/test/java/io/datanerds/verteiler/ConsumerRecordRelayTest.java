@@ -40,8 +40,8 @@ public class ConsumerRecordRelayTest {
         relay.setOffset(record);
         new Thread(relay).start();
 
-        verify(blockingQueueConsumer, after(100).atLeastOnce()).relay(eq(record));
-        verify(consumer, after(100).atLeastOnce()).commitAsync(any(), any());
+        verify(blockingQueueConsumer, timeout(1000).atLeastOnce()).relay(eq(record));
+        verify(consumer, timeout(1000).atLeastOnce()).commitAsync(any(), any());
         relay.stop();
     }
 
@@ -51,7 +51,7 @@ public class ConsumerRecordRelayTest {
 
         ConsumerRecordRelay<Integer, String> relay = new ConsumerRecordRelay<>(consumer, blockingQueueConsumer);
         new Thread(relay).start();
-        verify(blockingQueueConsumer, after(20).never()).relay(record);
+        verify(blockingQueueConsumer, never()).relay(record);
         relay.stop();
     }
 
