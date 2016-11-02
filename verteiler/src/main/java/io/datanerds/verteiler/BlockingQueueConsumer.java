@@ -75,8 +75,8 @@ public class BlockingQueueConsumer<K, V> implements ConsumerRebalanceListener {
             if (relay != null) {
                 throw new IllegalStateException("Consumer already started");
             }
-            relay = new ConsumerRecordRelay<>(this.consumer, this);
-            new Thread(this.relay).start();
+            relay = new ConsumerRecordRelay<>(consumer, this);
+            new Thread(relay).start();
         }
     }
 
