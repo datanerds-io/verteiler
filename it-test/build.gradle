@@ -1,0 +1,14 @@
+dependencies {
+    testCompile(
+            project(':verteiler'),
+            ["net._01001111:jlorem:1.3",
+             "org.apache.kafka:kafka-clients:$kafkaVersion:test"]
+    )
+
+    testCompile("org.apache.kafka:kafka_2.11:$kafkaVersion") {
+        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+    }
+    testCompile("org.apache.kafka:kafka_2.11:$kafkaVersion:test") {
+        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+    }
+}

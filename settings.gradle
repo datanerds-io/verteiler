@@ -1,0 +1,4 @@
+rootProject.name = 'verteiler'
+
+include 'verteiler'
+include 'it-test'
