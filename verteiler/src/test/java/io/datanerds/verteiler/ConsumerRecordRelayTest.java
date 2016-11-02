@@ -52,7 +52,7 @@ public class ConsumerRecordRelayTest {
         ConsumerRecordRelay<Integer, String> relay = new ConsumerRecordRelay<>(consumer, blockingQueueConsumer);
         new Thread(relay).start();
         verify(blockingQueueConsumer, never()).relay(record);
-        verify(consumer, times(1)).poll(anyLong());
+        verify(consumer, timeout(1000).only()).poll(anyLong());
         relay.stop();
     }
 
