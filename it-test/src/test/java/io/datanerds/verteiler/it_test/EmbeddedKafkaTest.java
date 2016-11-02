@@ -25,7 +25,7 @@ public abstract class EmbeddedKafkaTest {
     private static ZkConnection zkConnection;
     private static KafkaServer kafkaServer;
 
-    private static List<KafkaServer> servers = new ArrayList();
+    private static List<KafkaServer> servers = new ArrayList<>();
 
     public static void setUp() {
         // setup Zookeeper
@@ -53,9 +53,7 @@ public abstract class EmbeddedKafkaTest {
     }
 
     protected void createTopic(String topic) {
-        Properties properties = new Properties();
-        properties.put("cleanup.policy", "compact");
-        AdminUtils.createTopic(zkUtils, topic, 1, 1, properties, RackAwareMode.Disabled$.MODULE$);
+        AdminUtils.createTopic(zkUtils, topic, 20, 1, new Properties(), RackAwareMode.Disabled$.MODULE$);
         TestUtils.waitUntilMetadataIsPropagated(scala.collection.JavaConversions.asScalaBuffer(servers), topic, 0,
                 10000);
     }

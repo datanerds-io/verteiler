@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class ConsumerRecordRelay<K, V> implements Runnable {
+class ConsumerRecordRelay<K, V> implements Runnable {
 
     private static final Logger logger = LoggerFactory.getLogger(ConsumerRecordRelay.class);
     private static final long POLLING_TIMEOUT_MS = 5000L;
@@ -49,9 +49,13 @@ public class ConsumerRecordRelay<K, V> implements Runnable {
         logger.info("Kafka message relay stopped");
     }
 
-    public void setOffset(final ConsumerRecord<K, V> record) {
+    public void setOffset(ConsumerRecord<K, V> record) {
         offsets.put(new TopicPartition(record.topic(), record.partition()), new OffsetAndMetadata(record.offset()));
         updateOffsets = true;
+    }
+
+    public void removePartitionFromOffset(TopicPartition topicPartition) {
+        offsets.remove(topicPartition);
     }
 
     private void commitOffsets() {

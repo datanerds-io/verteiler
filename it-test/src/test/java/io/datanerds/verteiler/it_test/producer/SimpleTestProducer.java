@@ -38,7 +38,7 @@ public class SimpleTestProducer {
      * @throws InterruptedException
      */
     public RecordMetadata send(String message) throws ExecutionException, InterruptedException {
-        ProducerRecord<String, String> record = new ProducerRecord<>(topic, message, message);
+        ProducerRecord<String, String> record = new ProducerRecord<>(topic, message);
         return this.producer.send(record).get();
     }
 

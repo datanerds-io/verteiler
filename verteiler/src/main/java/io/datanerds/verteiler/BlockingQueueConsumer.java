@@ -20,6 +20,16 @@ import java.util.concurrent.Executors;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.apache.kafka.clients.consumer.ConsumerConfig.*;
 
+/**
+ * This class leverages the kafka-clients consumer implementation to distribute messages from assigned partitions to
+ * {@link java.util.concurrent.BlockingQueue}s. Each assigned partition will relay its messages to its own queue.
+ * In addition, each queue has a consuming process/thread. Once a message has been "processed" successfully its offset
+ * will be marked to be committed.
+ * <p/>
+ *
+ * @param <K> Key type
+ * @param <V> Value type
+ */
 public class BlockingQueueConsumer<K, V> implements ConsumerRebalanceListener {
 
     private static final Logger logger = LoggerFactory.getLogger(BlockingQueueConsumer.class);
@@ -35,6 +45,14 @@ public class BlockingQueueConsumer<K, V> implements ConsumerRebalanceListener {
     private final Object lock = new Object();
     private volatile ConsumerRecordRelay<K, V> relay;
 
+    /**
+     * This constructor immediately connects to the kafka broker and creates a {@link Processor} for each assigned
+     * partition.
+     *
+     * @param config    Kafka client configuration
+     * @param queueSize Size of the {@link java.util.concurrent.BlockingQueue}s for each {@link Processor}
+     * @param action    {@link java.util.function.Consumer} of the transported message
+     */
     public BlockingQueueConsumer(ConsumerConfig<K, V> config, int queueSize, java.util.function.Consumer<V> action) {
         this.config = config;
         this.action = action;
@@ -47,6 +65,11 @@ public class BlockingQueueConsumer<K, V> implements ConsumerRebalanceListener {
         partitions.forEach(this::createProcessor);
     }
 
+    /**
+     * Start consuming/ relaying messages to the processors.
+     *
+     * @throws IllegalStateException in case the consumer has been started before
+     */
     public void start() {
         synchronized (lock) {
             if (relay != null) {
@@ -57,13 +80,17 @@ public class BlockingQueueConsumer<K, V> implements ConsumerRebalanceListener {
         }
     }
 
+    /**
+     * Stops all background activities: kafka message consumption, message relay and processing.
+     *
+     * @throws IllegalArgumentException in case the consumer has not been started
+     */
     public void stop() {
         synchronized (lock) {
             if (relay == null) {
                 throw new IllegalStateException("Consumer not started, nothing to stop");
             }
             relay.stop();
-
             if (!MoreExecutors.shutdownAndAwaitTermination(pool, 10, SECONDS)) {
                 logger.error("Pool was not terminated properly.");
             }
@@ -79,7 +106,7 @@ public class BlockingQueueConsumer<K, V> implements ConsumerRebalanceListener {
     }
 
     private void createProcessor(TopicPartition partition) {
-        Processor<K, V> processor = new Processor<>(relay, action, queueSize);
+        Processor<K, V> processor = new Processor<>(partition, relay, action, queueSize);
         pool.execute(processor);
         processors.put(partition.partition(), processor);
     }
@@ -104,15 +131,16 @@ public class BlockingQueueConsumer<K, V> implements ConsumerRebalanceListener {
 
     @Override
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-        partitions.forEach((this::createProcessor));
+        partitions.forEach(this::createProcessor);
     }
 
     @Override
     public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-        partitions.forEach((partition -> {
+        partitions.forEach(partition -> {
             Processor<K, V> processor = processors.get(partition.partition());
             processor.stop();
             processors.remove(partition.partition());
-        }));
+            relay.removePartitionFromOffset(partition);
+        });
     }
 }

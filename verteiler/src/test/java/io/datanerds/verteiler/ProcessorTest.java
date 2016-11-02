@@ -1,6 +1,7 @@
 package io.datanerds.verteiler;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.TopicPartition;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -28,7 +29,7 @@ public class ProcessorTest {
     public void processMessage() throws Exception {
         AtomicInteger messageCounter = new AtomicInteger(0);
 
-        Processor<Integer, String> processor = new Processor<>(relay, (message) -> {
+        Processor<Integer, String> processor = new Processor<>(new TopicPartition("Hello", 1), relay, message -> {
             try {
                 messageCounter.incrementAndGet();
                 assertThat(message, is(equalTo("SomeValue")));
@@ -54,7 +55,7 @@ public class ProcessorTest {
     public void processMessageException() throws Exception {
         AtomicInteger messageCounter = new AtomicInteger(0);
 
-        Processor<Integer, String> processor = new Processor<>(relay, (message) -> {
+        Processor<Integer, String> processor = new Processor<>(new TopicPartition("Hello", 1), relay, message -> {
             try {
                 messageCounter.incrementAndGet();
                 assertThat(message, is(equalTo("SomeValue")));

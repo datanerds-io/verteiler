@@ -21,8 +21,7 @@ public class BlockingQueueConsumerTest extends EmbeddedKafkaTest {
 
     private static final Logger logger = LoggerFactory.getLogger(BlockingQueueConsumerTest.class);
     private static final LoremIpsum LOREM_IPSUM = new LoremIpsum();
-    private static final String TOPIC = "my_topic";
-    private static final int NUMBER_OF_MESSAGES = 50;
+    private static final int NUMBER_OF_MESSAGES = 100000;
 
     @BeforeClass
     public static void setUp() {
@@ -36,18 +35,18 @@ public class BlockingQueueConsumerTest extends EmbeddedKafkaTest {
 
     @Test
     public void sendAndReceiveTest() throws Exception {
-        createTopic(TOPIC);
+        createTopic("my_topic");
 
         AtomicInteger messageCounter = new AtomicInteger();
         Consumer<String> action = (message) -> messageCounter.incrementAndGet();
 
         ConsumerConfig<String, String> config =
-                new ConsumerConfig<>(kafkaConnect, "TestGroup", TOPIC, new StringDeserializer(),
+                new ConsumerConfig<>(kafkaConnect, "TestGroup", "my_topic", new StringDeserializer(),
                         new StringDeserializer());
         BlockingQueueConsumer<String, String> consumer = new BlockingQueueConsumer<>(config, 42, action);
         consumer.start();
 
-        SimpleTestProducer testProducer = new SimpleTestProducer("Lorem-Radio", TOPIC, kafkaConnect);
+        SimpleTestProducer testProducer = new SimpleTestProducer("Lorem-Radio", "my_topic", kafkaConnect);
         logger.info("Sending {} messages", NUMBER_OF_MESSAGES);
 
         for (int i = 0; i < NUMBER_OF_MESSAGES; i++) {
@@ -59,4 +58,36 @@ public class BlockingQueueConsumerTest extends EmbeddedKafkaTest {
         consumer.stop();
     }
 
+    @Test
+    public void reassignmentTest() throws Exception {
+        createTopic("my_reassignment_topic");
+        AtomicInteger messageCounter = new AtomicInteger();
+        Consumer<String> action = (message) -> messageCounter.incrementAndGet();
+
+        ConsumerConfig<String, String> config =
+                new ConsumerConfig<>(kafkaConnect, "TestGroup", "my_reassignment_topic", new StringDeserializer(),
+                        new StringDeserializer());
+        BlockingQueueConsumer<String, String> consumer = new BlockingQueueConsumer<>(config, 42, action);
+        consumer.start();
+
+        SimpleTestProducer testProducer = new SimpleTestProducer("Lorem-Radio", "my_reassignment_topic", kafkaConnect);
+        logger.info("Sending {} messages", NUMBER_OF_MESSAGES);
+        BlockingQueueConsumer<String, String> anotherConsumer = null;
+        for (int i = 0; i < NUMBER_OF_MESSAGES; i++) {
+            testProducer.send(LOREM_IPSUM.paragraph());
+            if (i == NUMBER_OF_MESSAGES / 10) {
+                anotherConsumer = new BlockingQueueConsumer<>(
+                        new ConsumerConfig<>(kafkaConnect, "TestGroup", "my_reassignment_topic",
+                                new StringDeserializer(), new StringDeserializer()), 42, action);
+                anotherConsumer.start();
+            }
+            if (i == NUMBER_OF_MESSAGES / 5) {
+                consumer.stop();
+            }
+        }
+
+        await().atMost(5, SECONDS).until(() -> messageCounter.get() >= NUMBER_OF_MESSAGES);
+        testProducer.close();
+        anotherConsumer.stop();
+    }
 }
