@@ -25,7 +25,6 @@ import static org.apache.kafka.clients.consumer.ConsumerConfig.*;
  * {@link java.util.concurrent.BlockingQueue}s. Each assigned partition will relay its messages to its own queue.
  * In addition, each queue has a consuming process/thread. Once a message has been "processed" successfully its offset
  * will be marked to be committed.
- * <p/>
  *
  * @param <K> Key type
  * @param <V> Value type
