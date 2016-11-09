@@ -50,7 +50,7 @@ class ConsumerRecordRelay<K, V> implements Runnable {
     }
 
     public void setOffset(ConsumerRecord<K, V> record) {
-        offsets.put(new TopicPartition(record.topic(), record.partition()), new OffsetAndMetadata(record.offset()));
+        offsets.put(new TopicPartition(record.topic(), record.partition()), new OffsetAndMetadata(record.offset() + 1));
         updateOffsets = true;
     }
 
@@ -60,6 +60,7 @@ class ConsumerRecordRelay<K, V> implements Runnable {
 
     private void commitOffsets() {
         if (updateOffsets) {
+            logger.trace("Commiting offsets {}", offsets);
             consumer.commitAsync(offsets, this::callback);
             updateOffsets = false;
         }
