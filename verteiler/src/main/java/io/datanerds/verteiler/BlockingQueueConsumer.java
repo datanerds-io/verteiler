@@ -37,6 +37,7 @@ public class BlockingQueueConsumer<K, V> implements ConsumerRebalanceListener {
     private final int queueSize;
     private final java.util.function.Consumer<V> action;
 
+    private final KafkaConfigValidator configValidator = BlockingQueueConfigValidator.getValidator();
     private final Map<Integer, Processor<K, V>> processors = new ConcurrentHashMap<>();
     private final ExecutorService pool;
     private final Consumer<K, V> consumer;
@@ -51,9 +52,13 @@ public class BlockingQueueConsumer<K, V> implements ConsumerRebalanceListener {
      * @param config    Kafka client configuration
      * @param queueSize Size of the {@link java.util.concurrent.BlockingQueue}s for each {@link Processor}
      * @param action    {@link java.util.function.Consumer} of the transported message
+     *
+     * @throws IllegalArgumentException if problems are found with the config
      */
     public BlockingQueueConsumer(ConsumerConfig<K, V> config, int queueSize, java.util.function.Consumer<V> action) {
         this.config = config;
+        configValidator.validate(config.consumerProperties);
+
         this.action = action;
         this.queueSize = queueSize;
         this.pool = Executors.newCachedThreadPool();
@@ -111,13 +116,22 @@ public class BlockingQueueConsumer<K, V> implements ConsumerRebalanceListener {
     }
 
     private Consumer<K, V> createKafkaConsumer() {
-        Properties props = new Properties();
-        props.put(BOOTSTRAP_SERVERS_CONFIG, config.brokerBootstrap);
-        props.put(GROUP_ID_CONFIG, config.groupId);
-        props.put(AUTO_OFFSET_RESET_CONFIG, "earliest");
-        props.put(ENABLE_AUTO_COMMIT_CONFIG, false);
-        props.put(CLIENT_ID_CONFIG, getClientId());
+        Properties props = config.consumerProperties;
+        addClientIdIfNotPresent(props);
+        addOffsetResetConfigIfNotPresent(props);
         return new KafkaConsumer<>(props, config.keyDeserializer, config.valueDeserializer);
+    }
+
+    private void addClientIdIfNotPresent(Properties props) {
+        if (!props.contains(CLIENT_ID_CONFIG)) {
+            props.put(CLIENT_ID_CONFIG, getClientId());
+        }
+    }
+
+    private void addOffsetResetConfigIfNotPresent(Properties props) {
+        if (!props.contains(AUTO_OFFSET_RESET_CONFIG)) {
+            props.put(AUTO_OFFSET_RESET_CONFIG, "earliest");
+        }
     }
 
     private String getClientId() {
