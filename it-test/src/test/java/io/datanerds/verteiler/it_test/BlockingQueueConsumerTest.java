@@ -22,6 +22,7 @@ public class BlockingQueueConsumerTest extends EmbeddedKafkaTest {
     private static final Logger logger = LoggerFactory.getLogger(BlockingQueueConsumerTest.class);
     private static final LoremIpsum LOREM_IPSUM = new LoremIpsum();
     private static final int NUMBER_OF_MESSAGES = 100000;
+    private static final String TEST_GROUP = "TestGroup";
 
     @BeforeClass
     public static void setUp() {
@@ -41,7 +42,7 @@ public class BlockingQueueConsumerTest extends EmbeddedKafkaTest {
         Consumer<String> action = (message) -> messageCounter.incrementAndGet();
 
         ConsumerConfig<String, String> config =
-                new ConsumerConfig<>(kafkaConnect, "TestGroup", "my_topic", new StringDeserializer(),
+                new ConsumerConfig<>(kafkaConnect, TEST_GROUP, "my_topic", new StringDeserializer(),
                         new StringDeserializer());
         BlockingQueueConsumer<String, String> consumer = new BlockingQueueConsumer<>(config, 42, action);
         consumer.start();
@@ -65,7 +66,7 @@ public class BlockingQueueConsumerTest extends EmbeddedKafkaTest {
         Consumer<String> action = (message) -> messageCounter.incrementAndGet();
 
         ConsumerConfig<String, String> config =
-                new ConsumerConfig<>(kafkaConnect, "TestGroup", "my_reassignment_topic", new StringDeserializer(),
+                new ConsumerConfig<>(kafkaConnect, TEST_GROUP, "my_reassignment_topic", new StringDeserializer(),
                         new StringDeserializer());
         BlockingQueueConsumer<String, String> consumer = new BlockingQueueConsumer<>(config, 42, action);
         consumer.start();
@@ -77,7 +78,7 @@ public class BlockingQueueConsumerTest extends EmbeddedKafkaTest {
             testProducer.send(LOREM_IPSUM.paragraph());
             if (i == NUMBER_OF_MESSAGES / 10) {
                 anotherConsumer = new BlockingQueueConsumer<>(
-                        new ConsumerConfig<>(kafkaConnect, "TestGroup", "my_reassignment_topic",
+                        new ConsumerConfig<>(kafkaConnect, TEST_GROUP, "my_reassignment_topic",
                                 new StringDeserializer(), new StringDeserializer()), 42, action);
                 anotherConsumer.start();
             }
@@ -89,5 +90,37 @@ public class BlockingQueueConsumerTest extends EmbeddedKafkaTest {
         await().atMost(5, SECONDS).until(() -> messageCounter.get() >= NUMBER_OF_MESSAGES);
         testProducer.close();
         anotherConsumer.stop();
+    }
+
+    @Test
+    public void testSendOneMessageRestartConsumerEnsureOneMessageOnly() throws Exception {
+        final String topic = "low_load_topic";
+        final String group = "OneMessageGroup";
+
+        createTopic(topic);
+
+        AtomicInteger messageCounter = new AtomicInteger();
+        Consumer<String> action = (message) -> messageCounter.incrementAndGet();
+
+        ConsumerConfig<String, String> config =
+                new ConsumerConfig<>(kafkaConnect, group, topic, new StringDeserializer(),
+                        new StringDeserializer());
+
+        BlockingQueueConsumer<String, String> consumer0 = new BlockingQueueConsumer<>(config, 5, action);
+        consumer0.start();
+
+        SimpleTestProducer testProducer = new SimpleTestProducer("Lorem-Radio", topic, kafkaConnect);
+        logger.info("Sending 1 message");
+
+        testProducer.send(LOREM_IPSUM.paragraph());
+
+        await().atMost(5, SECONDS).until(() -> messageCounter.get() == 1);
+        consumer0.stop();
+
+        BlockingQueueConsumer<String, String> consumer1 = new BlockingQueueConsumer<>(config, 5, action);
+        consumer1.start();
+
+        await().atMost(2, SECONDS).until(() -> messageCounter.get() == 1);
+        consumer1.stop();
     }
 }
