@@ -60,7 +60,6 @@ class ConsumerRecordRelay<K, V> implements Runnable {
 
     private void commitOffsets() {
         if (updateOffsets) {
-            logger.trace("Commiting offsets {}", offsets);
             consumer.commitAsync(offsets, this::callback);
             updateOffsets = false;
         }
