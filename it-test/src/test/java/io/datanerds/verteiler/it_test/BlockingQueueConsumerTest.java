@@ -95,6 +95,7 @@ public class BlockingQueueConsumerTest extends EmbeddedKafkaTest {
     @Test
     public void testSendOneMessageRestartConsumerEnsureOneMessageOnly() throws Exception {
         final String topic = "low_load_topic";
+        final String group = "OneMessageGroup";
 
         createTopic(topic);
 
@@ -102,7 +103,7 @@ public class BlockingQueueConsumerTest extends EmbeddedKafkaTest {
         Consumer<String> action = (message) -> messageCounter.incrementAndGet();
 
         ConsumerConfig<String, String> config =
-                new ConsumerConfig<>(kafkaConnect, TEST_GROUP, topic, new StringDeserializer(),
+                new ConsumerConfig<>(kafkaConnect, group, topic, new StringDeserializer(),
                         new StringDeserializer());
 
         BlockingQueueConsumer<String, String> consumer0 = new BlockingQueueConsumer<>(config, 5, action);
