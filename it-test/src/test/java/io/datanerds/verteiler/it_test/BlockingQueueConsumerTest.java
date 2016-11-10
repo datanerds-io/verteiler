@@ -1,7 +1,6 @@
 package io.datanerds.verteiler.it_test;
 
 import io.datanerds.verteiler.BlockingQueueConsumer;
-import io.datanerds.verteiler.ConsumerConfig;
 import io.datanerds.verteiler.it_test.producer.SimpleTestProducer;
 import net._01001111.text.LoremIpsum;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -17,9 +16,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.awaitility.Awaitility.await;
-
 import static org.apache.kafka.clients.consumer.ConsumerConfig.*;
+import static org.awaitility.Awaitility.await;
 
 public class BlockingQueueConsumerTest extends EmbeddedKafkaTest {
 
@@ -45,6 +43,8 @@ public class BlockingQueueConsumerTest extends EmbeddedKafkaTest {
         props = new Properties();
         props.setProperty(BOOTSTRAP_SERVERS_CONFIG, kafkaConnect);
         props.setProperty(GROUP_ID_CONFIG, TEST_GROUP);
+        props.setProperty(KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        props.setProperty(VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
     }
 
     @Test
@@ -55,9 +55,7 @@ public class BlockingQueueConsumerTest extends EmbeddedKafkaTest {
         AtomicInteger messageCounter = new AtomicInteger();
         Consumer<String> action = (message) -> messageCounter.incrementAndGet();
 
-        ConsumerConfig<String, String> config =
-                new ConsumerConfig<>(topic, props, new StringDeserializer(), new StringDeserializer());
-        BlockingQueueConsumer<String, String> consumer = new BlockingQueueConsumer<>(config, 42, action);
+        BlockingQueueConsumer<String, String> consumer = new BlockingQueueConsumer<>(topic, props, 42, action);
         consumer.start();
 
         SimpleTestProducer testProducer = new SimpleTestProducer("Lorem-Radio", topic, kafkaConnect);
@@ -80,9 +78,7 @@ public class BlockingQueueConsumerTest extends EmbeddedKafkaTest {
         AtomicInteger messageCounter = new AtomicInteger();
         Consumer<String> action = (message) -> messageCounter.incrementAndGet();
 
-        ConsumerConfig<String, String> config =
-                new ConsumerConfig<>(topic, props, new StringDeserializer(), new StringDeserializer());
-        BlockingQueueConsumer<String, String> consumer = new BlockingQueueConsumer<>(config, 42, action);
+        BlockingQueueConsumer<String, String> consumer = new BlockingQueueConsumer<>(topic, props, 42, action);
         consumer.start();
 
         SimpleTestProducer testProducer = new SimpleTestProducer("Lorem-Radio", topic, kafkaConnect);
@@ -91,9 +87,7 @@ public class BlockingQueueConsumerTest extends EmbeddedKafkaTest {
         for (int i = 0; i < NUMBER_OF_MESSAGES; i++) {
             testProducer.send(LOREM_IPSUM.paragraph());
             if (i == NUMBER_OF_MESSAGES / 10) {
-                anotherConsumer = new BlockingQueueConsumer<>(
-                        new ConsumerConfig<>(
-                                topic, props, new StringDeserializer(), new StringDeserializer()), 42, action);
+                anotherConsumer = new BlockingQueueConsumer<>(topic, props, 42, action);
                 anotherConsumer.start();
             }
             if (i == NUMBER_OF_MESSAGES / 5) {
@@ -117,10 +111,7 @@ public class BlockingQueueConsumerTest extends EmbeddedKafkaTest {
         AtomicInteger messageCounter = new AtomicInteger();
         Consumer<String> action = (message) -> messageCounter.incrementAndGet();
 
-        ConsumerConfig<String, String> config =
-                new ConsumerConfig<>(topic, props,  new StringDeserializer(), new StringDeserializer());
-
-        BlockingQueueConsumer<String, String> consumer0 = new BlockingQueueConsumer<>(config, 5, action);
+        BlockingQueueConsumer<String, String> consumer0 = new BlockingQueueConsumer<>(topic, props, 5, action);
         consumer0.start();
 
         SimpleTestProducer testProducer = new SimpleTestProducer("Lorem-Radio", topic, kafkaConnect);
@@ -131,7 +122,7 @@ public class BlockingQueueConsumerTest extends EmbeddedKafkaTest {
         await().atMost(5, SECONDS).until(() -> messageCounter.get() == 1);
         consumer0.stop();
 
-        BlockingQueueConsumer<String, String> consumer1 = new BlockingQueueConsumer<>(config, 5, action);
+        BlockingQueueConsumer<String, String> consumer1 = new BlockingQueueConsumer<>(topic, props, 5, action);
         consumer1.start();
 
         await().atMost(2, SECONDS).until(() -> messageCounter.get() == 1);
