@@ -18,7 +18,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.apache.kafka.clients.consumer.ConsumerConfig.*;
+import static org.apache.kafka.clients.consumer.ConsumerConfig.AUTO_OFFSET_RESET_CONFIG;
+import static org.apache.kafka.clients.consumer.ConsumerConfig.CLIENT_ID_CONFIG;
 
 /**
  * This class leverages the kafka-clients consumer implementation to distribute messages from assigned partitions to
@@ -33,11 +34,11 @@ public class BlockingQueueConsumer<K, V> implements ConsumerRebalanceListener {
 
     private static final Logger logger = LoggerFactory.getLogger(BlockingQueueConsumer.class);
 
-    private final ConsumerConfig<K, V> config;
+    private final Properties kafkaConfig;
+    private final String topic;
     private final int queueSize;
     private final java.util.function.Consumer<V> action;
 
-    private final KafkaConfigValidator configValidator = BlockingQueueConfigValidator.getValidator();
     private final Map<Integer, Processor<K, V>> processors = new ConcurrentHashMap<>();
     private final ExecutorService pool;
     private final Consumer<K, V> consumer;
@@ -49,22 +50,25 @@ public class BlockingQueueConsumer<K, V> implements ConsumerRebalanceListener {
      * This constructor immediately connects to the kafka broker and creates a {@link Processor} for each assigned
      * partition.
      *
-     * @param config    Kafka client configuration
-     * @param queueSize Size of the {@link java.util.concurrent.BlockingQueue}s for each {@link Processor}
-     * @param action    {@link java.util.function.Consumer} of the transported message
-     *
+     * @param topic       The topic to subscribe to
+     * @param kafkaConfig Kafka client configuration
+     * @param queueSize   Size of the {@link java.util.concurrent.BlockingQueue}s for each {@link Processor}
+     * @param action      {@link java.util.function.Consumer} of the transported message
      * @throws IllegalArgumentException if problems are found with the config
      */
-    public BlockingQueueConsumer(ConsumerConfig<K, V> config, int queueSize, java.util.function.Consumer<V> action) {
-        this.config = config;
-        configValidator.validate(config.consumerProperties);
+    public BlockingQueueConsumer(String topic, Properties kafkaConfig, int queueSize,
+            java.util.function.Consumer<V> action) {
+        this.topic = topic;
+
+        KafkaConfigValidator.validate(kafkaConfig);
+        this.kafkaConfig = kafkaConfig;
 
         this.action = action;
         this.queueSize = queueSize;
         this.pool = Executors.newCachedThreadPool();
         this.consumer = createKafkaConsumer();
 
-        consumer.subscribe(Arrays.asList(config.topic), this);
+        consumer.subscribe(Arrays.asList(topic), this);
         Set<TopicPartition> partitions = consumer.assignment();
         partitions.forEach(this::createProcessor);
     }
@@ -102,7 +106,7 @@ public class BlockingQueueConsumer<K, V> implements ConsumerRebalanceListener {
     }
 
     void relay(ConsumerRecord<K, V> message) throws InterruptedException {
-        if (!config.topic.equals(message.topic())) {
+        if (!topic.equals(message.topic())) {
             throw new ConsumerException(String.format("Message from unexpected topic: '%s'", message.topic()));
         }
         Processor<K, V> processor = processors.get(message.partition());
@@ -116,10 +120,9 @@ public class BlockingQueueConsumer<K, V> implements ConsumerRebalanceListener {
     }
 
     private Consumer<K, V> createKafkaConsumer() {
-        Properties props = config.consumerProperties;
-        addClientIdIfNotPresent(props);
-        addOffsetResetConfigIfNotPresent(props);
-        return new KafkaConsumer<>(props, config.keyDeserializer, config.valueDeserializer);
+        addClientIdIfNotPresent(kafkaConfig);
+        addOffsetResetConfigIfNotPresent(kafkaConfig);
+        return new KafkaConsumer<>(kafkaConfig);
     }
 
     private void addClientIdIfNotPresent(Properties props) {
@@ -136,7 +139,7 @@ public class BlockingQueueConsumer<K, V> implements ConsumerRebalanceListener {
 
     private String getClientId() {
         try {
-            return String.format("%s-%s", InetAddress.getLocalHost().getHostName(), config.topic);
+            return String.format("%s-%s", InetAddress.getLocalHost().getHostName(), topic);
         } catch (UnknownHostException ex) {
             throw new ConsumerException("Could not retrieve client identifier", ex);
         }
