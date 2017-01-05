@@ -3,7 +3,6 @@ package io.datanerds.verteiler;
 import com.google.common.base.Joiner;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
@@ -32,21 +31,22 @@ class ConsumerRecordRelay<K, V> implements Runnable {
     @Override
     public void run() {
         while (!stopped) {
-            ConsumerRecords<K, V> records = consumer.poll(POLLING_TIMEOUT_MS);
-            for (ConsumerRecord<K, V> record : records) {
-                try {
-                    blockingQueueConsumer.relay(record);
-                } catch (InterruptedException ignored) {
-                    logger.info("Interrupted during relay");
-                } catch (Exception ex) {
-                    logger.error("Error while relaying messages from kafka to queue: {}", ex.getMessage(), ex);
-                    blockingQueueConsumer.stop();
-                }
-            }
+            consumer.poll(POLLING_TIMEOUT_MS).forEach(this::relayRecordToConsumerHandlingErrors);
             commitOffsets();
         }
         this.consumer.close();
         logger.info("Kafka message relay stopped");
+    }
+
+    private void relayRecordToConsumerHandlingErrors(ConsumerRecord<K, V> record) {
+        try {
+            blockingQueueConsumer.relay(record);
+        } catch (InterruptedException ignored) {
+            logger.info("Interrupted during relay");
+        } catch (Exception ex) {
+            logger.error("Error while relaying messages from kafka to queue: {}", ex.getMessage(), ex);
+            blockingQueueConsumer.stop();
+        }
     }
 
     public void setOffset(ConsumerRecord<K, V> record) {
