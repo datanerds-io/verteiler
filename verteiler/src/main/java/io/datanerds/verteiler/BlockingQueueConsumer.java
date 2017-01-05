@@ -16,6 +16,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Supplier;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.apache.kafka.clients.consumer.ConsumerConfig.AUTO_OFFSET_RESET_CONFIG;
@@ -57,7 +58,7 @@ public class BlockingQueueConsumer<K, V> implements ConsumerRebalanceListener {
      * @throws IllegalArgumentException if problems are found with the config
      */
     public BlockingQueueConsumer(String topic, Properties kafkaConfig, int queueSize,
-            java.util.function.Consumer<V> action) {
+                                 java.util.function.Consumer<V> action) {
         this.topic = topic;
 
         KafkaConfigValidator.validate(kafkaConfig);
@@ -68,7 +69,7 @@ public class BlockingQueueConsumer<K, V> implements ConsumerRebalanceListener {
         this.pool = Executors.newCachedThreadPool();
         this.consumer = createKafkaConsumer();
 
-        consumer.subscribe(Arrays.asList(topic), this);
+        consumer.subscribe(Collections.singletonList(topic), this);
         Set<TopicPartition> partitions = consumer.assignment();
         partitions.forEach(this::createProcessor);
     }
@@ -120,21 +121,20 @@ public class BlockingQueueConsumer<K, V> implements ConsumerRebalanceListener {
     }
 
     private Consumer<K, V> createKafkaConsumer() {
-        addClientIdIfNotPresent(kafkaConfig);
-        addOffsetResetConfigIfNotPresent(kafkaConfig);
+        setPropertyDefaultIfNotPresent(kafkaConfig, CLIENT_ID_CONFIG, this::getClientId);
+        setPropertyDefaultIfNotPresent(kafkaConfig, AUTO_OFFSET_RESET_CONFIG, () -> "earliest");
         return new KafkaConsumer<>(kafkaConfig);
     }
 
-    private void addClientIdIfNotPresent(Properties props) {
-        if (!props.contains(CLIENT_ID_CONFIG)) {
-            props.put(CLIENT_ID_CONFIG, getClientId());
+    private void setPropertyDefaultIfNotPresent(
+            Properties props,
+            String propertyName,
+            Supplier<String> defaultValue
+    ) {
+        if (props.contains(propertyName)) {
+            return;
         }
-    }
-
-    private void addOffsetResetConfigIfNotPresent(Properties props) {
-        if (!props.contains(AUTO_OFFSET_RESET_CONFIG)) {
-            props.put(AUTO_OFFSET_RESET_CONFIG, "earliest");
-        }
+        props.put(propertyName, defaultValue.get());
     }
 
     private String getClientId() {
