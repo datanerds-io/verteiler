@@ -12,9 +12,10 @@ final class KafkaConfigValidator {
     private KafkaConfigValidator() {
     }
 
-    public static void validate(Properties props) {
+    static Properties validate(Properties props) {
         verifyPropsNotNull(props);
         verifyAutoCommitDisabled(props);
+        return props;
     }
 
     private static void verifyPropsNotNull(Properties props) {

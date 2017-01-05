@@ -60,9 +60,7 @@ public class BlockingQueueConsumer<K, V> implements ConsumerRebalanceListener {
     public BlockingQueueConsumer(String topic, Properties kafkaConfig, int queueSize,
                                  java.util.function.Consumer<V> action) {
         this.topic = topic;
-
-        KafkaConfigValidator.validate(kafkaConfig);
-        this.kafkaConfig = kafkaConfig;
+        this.kafkaConfig = KafkaConfigValidator.validate(kafkaConfig);
 
         this.action = action;
         this.queueSize = queueSize;
