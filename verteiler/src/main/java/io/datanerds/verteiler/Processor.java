@@ -42,7 +42,7 @@ class Processor<K, V> implements Runnable {
         } catch (Exception ex) {
             logger.error("Exception during processing {}. Stopping!", topicPartition, ex);
         }
-        stopped = true;
+        stop();
         queue.clear();
         logger.info("Processor for {} stopped", topicPartition);
     }
