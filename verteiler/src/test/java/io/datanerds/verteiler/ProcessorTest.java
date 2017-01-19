@@ -80,4 +80,16 @@ public class ProcessorTest {
         verify(relay, never()).setOffset(record);
     }
 
+    @Test
+    public void stoppedSetOnException() throws Exception {
+        final Processor<Integer, String> processor = new Processor<>(new TopicPartition("Hello", 1), relay, message -> {
+            throw new RuntimeException("Foobar! Something went wrong");
+        }, 42);
+
+        new Thread(processor).start();
+        processor.queue(record);
+
+        await().until(processor::isStopped, is(equalTo(true)));
+    }
+
 }
