@@ -42,6 +42,7 @@ class Processor<K, V> implements Runnable {
         } catch (Exception ex) {
             logger.error("Exception during processing {}. Stopping!", topicPartition, ex);
         }
+        stop();
         queue.clear();
         logger.info("Processor for {} stopped", topicPartition);
     }
@@ -52,5 +53,9 @@ class Processor<K, V> implements Runnable {
 
     public void queue(ConsumerRecord<K, V> record) throws InterruptedException {
         queue.put(record);
+    }
+
+    public boolean isStopped() {
+        return stopped;
     }
 }
