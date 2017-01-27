@@ -18,8 +18,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.apache.kafka.clients.consumer.ConsumerConfig.AUTO_OFFSET_RESET_CONFIG;
 import static org.apache.kafka.clients.consumer.ConsumerConfig.CLIENT_ID_CONFIG;
+import static org.apache.kafka.clients.consumer.ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG;
 
 /**
  * This class leverages the kafka-clients consumer implementation to distribute messages from assigned partitions to
@@ -121,7 +121,7 @@ public class BlockingQueueConsumer<K, V> implements ConsumerRebalanceListener {
 
     private Consumer<K, V> createKafkaConsumer() {
         addClientIdIfNotPresent(kafkaConfig);
-        addOffsetResetConfigIfNotPresent(kafkaConfig);
+        addDisableAutoCommitIfNotPresent(kafkaConfig);
         return new KafkaConsumer<>(kafkaConfig);
     }
 
@@ -131,9 +131,9 @@ public class BlockingQueueConsumer<K, V> implements ConsumerRebalanceListener {
         }
     }
 
-    private void addOffsetResetConfigIfNotPresent(Properties props) {
-        if (!props.contains(AUTO_OFFSET_RESET_CONFIG)) {
-            props.put(AUTO_OFFSET_RESET_CONFIG, "earliest");
+    private void addDisableAutoCommitIfNotPresent(Properties props) {
+        if (!props.contains(ENABLE_AUTO_COMMIT_CONFIG)) {
+            props.put(ENABLE_AUTO_COMMIT_CONFIG, "false");
         }
     }
 

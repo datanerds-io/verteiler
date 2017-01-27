@@ -43,6 +43,7 @@ public class BlockingQueueConsumerTest extends EmbeddedKafkaTest {
         props = new Properties();
         props.setProperty(BOOTSTRAP_SERVERS_CONFIG, kafkaConnect);
         props.setProperty(GROUP_ID_CONFIG, TEST_GROUP);
+        props.setProperty(AUTO_OFFSET_RESET_CONFIG, "earliest");
         props.setProperty(KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         props.setProperty(VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
     }
