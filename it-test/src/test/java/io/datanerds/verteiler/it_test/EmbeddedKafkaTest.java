@@ -9,6 +9,7 @@ import kafka.utils.*;
 import kafka.zk.EmbeddedZookeeper;
 import org.I0Itec.zkclient.ZkClient;
 import org.I0Itec.zkclient.ZkConnection;
+import org.apache.kafka.common.utils.Time;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,7 +42,7 @@ public abstract class EmbeddedKafkaTest {
         Time mock = new MockTime();
         kafkaServer = TestUtils.createServer(config, mock);
         servers.add(kafkaServer);
-        kafkaConnect = kafkaServer.config().hostName() + ":" + kafkaServer.config().port();
+        kafkaConnect = (String) kafkaServer.config().props().get("listeners");
     }
 
     public static void tearDown() throws InterruptedException {

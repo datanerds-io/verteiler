@@ -6,10 +6,10 @@ ext {
     sourceCompatibility = 1.8
     version = '1.0.0'
     guavaVersion = '18.0'
-    kafkaVersion = '0.10.1.1'
+    kafkaVersion = '0.10.2.1'
     slf4jVersion = '1.7.21'
 
-    skipSigning = project.hasProperty('skipSigning') && skipSigning.toBoolean()
+    skipSigning = project.hasProperty('s    kipSigning') && skipSigning.toBoolean()
     shouldSign = !skipSigning && !version.endsWith("SNAPSHOT") && project.gradle.startParameter.taskNames.any {
         it.contains("upload")
     }
