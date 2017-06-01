@@ -5,7 +5,7 @@
 
 # Verteiler (fɛɐˈtailɐ)
 
-"Verteiler" is german and translates to _distributor_. When you are using the new'ish `kafka-clients` consumer, you will face the issue that `Consumer.poll(...)` can only be called from [one thread][1]. Verteiler leverages the kafka-client consumer implementation to distribute messages from assigned partitions to `BlockingQueue`s. Each assigned partition will relay its messages to its own internal queue. Additionally, each queue has a consuming thread. Once a message has been processed successfully its offset will be committed asynchronously after `poll(...)` has finished. This way only the offset of processed messages is committed.
+"Verteiler" is german and translates to _distributor_. When you are using the (new) `kafka-clients` consumer introduced with v0.9.0, you will face the issue that `Consumer.poll(...)` can only be called from [one thread][1]. Verteiler leverages the kafka-client consumer implementation to distribute messages from assigned partitions to `BlockingQueue`s. Each assigned partition will relay its messages to its own internal queue. These queues have worker threads which process the message leveraging a user defined consumer. Once a message has been processed successfully its offset will be committed asynchronously after `poll(...)` has finished. This way only the offset of processed messages is committed.
 
 # How to use `verteiler`
 
@@ -18,8 +18,8 @@
 `Properties kafkaConfig`: Regular [consumer config][2]. By default `verteiler` will disable auto offset commit and set a client id when not given.
 
 `int queueSize`: Size of the internal queue, which depends on your needs.
-                
-`java.util.function.Consumer<V> action`: The function which will handle a message. 
+
+`java.util.function.Consumer<V> action`: The function which will handle a message.
 
 ### Example
 Simple message counter:
