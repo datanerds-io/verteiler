@@ -109,7 +109,13 @@ public class BlockingQueueConsumer<K, V> implements ConsumerRebalanceListener {
         if (!topic.equals(message.topic())) {
             throw new ConsumerException(String.format("Message from unexpected topic: '%s'", message.topic()));
         }
+
         Processor<K, V> processor = processors.get(message.partition());
+        if (processor.isStopped()) {
+            throw new ConsumerException(
+                    String.format("Processor '%s-%s' has stopped", message.topic(), message.partition())
+            );
+        }
         processor.queue(message);
     }
 

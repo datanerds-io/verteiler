@@ -41,6 +41,7 @@ class ConsumerRecordRelay<K, V> implements Runnable {
                 } catch (Exception ex) {
                     logger.error("Error while relaying messages from kafka to queue: {}", ex.getMessage(), ex);
                     blockingQueueConsumer.stop();
+                    break;
                 }
             }
             commitOffsets();

@@ -131,44 +131,6 @@ public class BlockingQueueConsumerTest extends EmbeddedKafkaTest {
     }
 
     @Test
-    public void stopOneOfTwoConsumerTest() throws Exception {
-        final String topic = "stop_oneOfTwoConsumer_topic";
-        createTopic(topic);
-
-        AtomicInteger messageCounter = new AtomicInteger();
-
-        Consumer<String> action = (message) -> {
-            messageCounter.incrementAndGet();
-        };
-
-        BlockingQueueConsumer<String, String> consumer1 = new BlockingQueueConsumer<>(topic, props,
-                42, action);
-        consumer1.start();
-
-        BlockingQueueConsumer<String, String> consumer2 = new BlockingQueueConsumer<>(topic, props,
-                42, action);
-        consumer2.start();
-
-        SimpleTestProducer testProducer = new SimpleTestProducer("Lorem-Radio", topic, kafkaConnect);
-        logger.info("Sending {} messages", NUMBER_OF_MESSAGES);
-
-        for (int i = 0; i < NUMBER_OF_MESSAGES; i++) {
-            testProducer.send(String.valueOf(i));
-            if (i == NUMBER_OF_MESSAGES / 5) {
-                consumer1.stop();
-            }
-        }
-
-        try {
-            await().atMost(5, SECONDS).until(() -> messageCounter.get() == NUMBER_OF_MESSAGES);
-        } finally {
-            logger.info( "expected {} , actully {}", NUMBER_OF_MESSAGES, messageCounter.get() );
-        }
-        testProducer.close();
-        consumer2.stop();
-    }
-
-    @Test
     public void handleMessageWithExceptionTest() throws Exception {
         final String topic = "handle_exception_topic";
         createTopic(topic);
@@ -198,11 +160,7 @@ public class BlockingQueueConsumerTest extends EmbeddedKafkaTest {
             testProducer.send(LOREM_IPSUM.paragraph());
         }
 
-        try {
-            await().atMost(60, SECONDS).until(() -> messageCounter.get() == NUMBER_OF_MESSAGES);
-        } finally {
-            logger.info( "expected {} , actully {}", NUMBER_OF_MESSAGES, messageCounter.get() );
-        }
+        await().atMost(60, SECONDS).until(() -> messageCounter.get() >= NUMBER_OF_MESSAGES);
 
         testProducer.close();
         consumer2.stop();
